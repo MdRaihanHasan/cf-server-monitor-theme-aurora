@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - master
     paths:
       - package.json
 
@@ -16,12 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 22
 
-      - run: bun install --frozen-lockfile
-      - run: bun run build
+      - run: npm ci
+      - run: npm run build
 
       - name: Push dist to build branch
         run: |

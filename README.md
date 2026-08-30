@@ -4,8 +4,6 @@
 
 <p align="center"><b>Created by RYN</b></p>
 
-![preview](/docs/preview.png)
-
 > Aurora is an independent re-skin inspired by the Emerald theme. The whole UI is in English, all price / currency / exchange-rate features have been removed, and the accent palette is a cool teal → cyan ("aurora").
 
 ## Features
