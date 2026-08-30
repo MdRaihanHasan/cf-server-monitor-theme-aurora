@@ -57,9 +57,47 @@ watch(searchText, (value) => {
 })
 
 const groups = computed(() => [
-  { tab: 'All Nodes', name: 'all' },
-  ...nodesStore.groups.map(g => ({ tab: g, name: g })),
+  { tab: 'All Nodes', name: 'all', count: nodesStore.nodes.length },
+  ...nodesStore.groups.map(g => ({
+    tab: g,
+    name: g,
+    count: nodesStore.nodes.filter(n => isNodeInGroup(n.group, g)).length,
+  })),
 ])
+
+const SORT_OPTIONS = [
+  { key: 'default', label: 'Default' },
+  { key: 'name', label: 'Name' },
+  { key: 'cpu', label: 'CPU' },
+  { key: 'memory', label: 'Memory' },
+  { key: 'disk', label: 'Disk' },
+  { key: 'network', label: 'Network' },
+  { key: 'uptime', label: 'Uptime' },
+  { key: 'status', label: 'Status' },
+] as const
+
+const STATUS_OPTIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'online', label: 'Online' },
+  { key: 'offline', label: 'Offline' },
+] as const
+
+function nodeSortValue(node: NodeData, key: string): number | string {
+  switch (key) {
+    case 'name': return node.name?.toLowerCase() ?? ''
+    case 'cpu': return node.cpu ?? 0
+    case 'memory': return (node.ram ?? 0) / (node.mem_total || 1)
+    case 'disk': return (node.disk ?? 0) / (node.disk_total || 1)
+    case 'network': return (node.net_out ?? 0) + (node.net_in ?? 0)
+    case 'uptime': return node.uptime ?? 0
+    case 'status': return node.online ? 1 : 0
+    default: return 0
+  }
+}
+
+function toggleSortDir() {
+  appStore.nodeSortDir = appStore.nodeSortDir === 'asc' ? 'desc' : 'asc'
+}
 
 watch(
   () => nodesStore.groups,
@@ -104,9 +142,25 @@ const nodeList = computed(() => {
   if (debouncedSearchText.value.trim()) {
     filtered = filtered.filter(n => isNodeMatchSearch(n, debouncedSearchText.value))
   }
+  if (appStore.nodeStatusFilter === 'online')
+    filtered = filtered.filter(n => n.online)
+  else if (appStore.nodeStatusFilter === 'offline')
+    filtered = filtered.filter(n => !n.online)
+
+  const key = appStore.nodeSortKey
+  if (key !== 'default') {
+    const dir = appStore.nodeSortDir === 'desc' ? -1 : 1
+    return [...filtered].sort((a, b) => {
+      const va = nodeSortValue(a, key)
+      const vb = nodeSortValue(b, key)
+      if (typeof va === 'string' || typeof vb === 'string')
+        return dir * String(va).localeCompare(String(vb), 'en-US')
+      return dir * ((va as number) - (vb as number))
+    })
+  }
   if (!appStore.offlineNodesLast)
     return filtered
-  // Stable sort: online nodes first, offline nodes last, preserving original order within each group
+  // Default order: online nodes first, offline nodes last, preserving original order within each group
   return [...filtered].sort((a, b) => (a.online === b.online ? 0 : a.online ? -1 : 1))
 })
 
@@ -188,6 +242,7 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
                   class="h-6.5 flex-none shrink-0 text-xs border-none data-[state=active]:text-teal-600 shadow-none rounded-sm"
                 >
                   {{ g.tab }}
+                  <span class="ml-1 text-[10px] tabular-nums opacity-60">{{ g.count }}</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -221,6 +276,43 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+            <div
+              class="inline-flex items-center gap-0.5 rounded-md p-0.5"
+              :class="pickSurfaceClass('bg-background/60', 'bg-background/50 backdrop-blur-xs')"
+            >
+              <button
+                v-for="opt in STATUS_OPTIONS" :key="opt.key" type="button"
+                class="h-6 rounded-sm px-2.5 text-xs font-medium transition-colors"
+                :class="appStore.nodeStatusFilter === opt.key ? 'bg-background text-teal-600 shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                @click="appStore.nodeStatusFilter = opt.key"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+            <div class="ml-auto flex items-center gap-1.5">
+              <Icon icon="tabler:arrows-sort" :width="14" :height="14" class="text-muted-foreground" />
+              <select
+                v-model="appStore.nodeSortKey"
+                aria-label="Sort nodes by"
+                class="h-7 cursor-pointer rounded-md border-none px-2 text-xs font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus:text-foreground"
+                :class="pickSurfaceClass('bg-background/60', 'bg-background/50 backdrop-blur-xs')"
+              >
+                <option v-for="opt in SORT_OPTIONS" :key="opt.key" :value="opt.key">
+                  {{ opt.label }}
+                </option>
+              </select>
+              <Button
+                variant="outline" size="icon" aria-label="Toggle sort direction"
+                class="h-7 w-7 border-none shadow-none rounded-md"
+                :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background/60 backdrop-blur-xs')"
+                :disabled="appStore.nodeSortKey === 'default'"
+                @click="toggleSortDir"
+              >
+                <Icon :icon="appStore.nodeSortDir === 'asc' ? 'tabler:sort-ascending' : 'tabler:sort-descending'" :width="14" :height="14" />
+              </Button>
             </div>
           </div>
           <TabsContent :key="appStore.nodeSelectedGroup" :value="appStore.nodeSelectedGroup" class="pointer-events-auto">

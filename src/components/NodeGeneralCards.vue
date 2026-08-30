@@ -24,6 +24,7 @@ const nodesStore = useNodesStore()
 const summaryNodes = computed(() => props.nodes ?? nodesStore.nodes)
 const onlineCount = computed(() => summaryNodes.value.filter(n => n.online).length)
 const totalCount = computed(() => summaryNodes.value.length)
+const onlineRatio = computed(() => totalCount.value ? Math.round((onlineCount.value / totalCount.value) * 100) : 0)
 const summaryTransitionKey = computed(() => props.transitionKey ?? 'all')
 const metricSwitchTransitionProps = computed(() => ({
   ...(appStore.disablePageAnimation
@@ -190,7 +191,7 @@ const cardGridClass = computed(() => showVisualPanel.value
                 {{ onlineCount }}
               </span>
               <span class="block truncate text-[11px] md:text-xs font-medium text-muted-foreground">
-                / {{ totalCount }} online
+                / {{ totalCount }} · {{ onlineRatio }}%
               </span>
             </div>
           </Transition>

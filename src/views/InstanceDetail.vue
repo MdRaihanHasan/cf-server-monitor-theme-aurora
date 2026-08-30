@@ -15,6 +15,8 @@ import { subscribeNodeLive } from '@/utils/init'
 import { getTrafficUsed, getTrafficUsedPercentage, showTrafficProgress } from '@/utils/nodeHelper'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getRegionCode, getRegionDisplayName } from '@/utils/regionHelper'
+import { hasIPv4, hasIPv6 } from '@/utils/tagHelper'
+import { message } from '@/utils/message'
 
 interface GpuInfo {
   id?: number | string
@@ -168,6 +170,41 @@ const trafficUsageText = computed(() => {
 const trafficProgressStyle = computed(() => ({
   width: `${trafficUsedPercentage.value}%`,
 }))
+
+const runtimeStats = computed(() => {
+  const node = data.value
+  if (!node)
+    return []
+  const stats = [
+    { label: 'Load (1m / 5m / 15m)', value: `${(node.load ?? 0).toFixed(2)} / ${(node.load5 ?? 0).toFixed(2)} / ${(node.load15 ?? 0).toFixed(2)}` },
+    { label: 'TCP Connections', value: String(node.connections ?? 0) },
+    { label: 'UDP Connections', value: String(node.connections_udp ?? 0) },
+    { label: 'Processes', value: String(node.process ?? 0) },
+  ]
+  if ((node.temp ?? 0) > 0)
+    stats.push({ label: 'Temperature', value: `${node.temp.toFixed(1)} °C` })
+  return stats
+})
+
+const ipAddresses = computed(() => {
+  const node = data.value
+  const list: Array<{ label: string, value: string }> = []
+  if (node && hasIPv4(node.ipv4))
+    list.push({ label: 'IPv4', value: node.ipv4 as string })
+  if (node && hasIPv6(node.ipv6))
+    list.push({ label: 'IPv6', value: node.ipv6 as string })
+  return list
+})
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    message.success('Copied to clipboard')
+  }
+  catch {
+    message.error('Copy failed')
+  }
+}
 </script>
 
 <template>
@@ -339,6 +376,33 @@ const trafficProgressStyle = computed(() => ({
                 {{ formatBytesPerSecond(data?.net_in ?? 0) }}
               </span>
             </div>
+          </div>
+        </CardX>
+
+        <CardX
+          title="Runtime" size="small"
+          class="group h-full border-none transition-all rounded-md lg:col-span-2"
+          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+        >
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div
+              v-for="stat in runtimeStats" :key="stat.label"
+              class="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2"
+            >
+              <span class="text-xs text-muted-foreground">{{ stat.label }}</span>
+              <span class="text-xs sm:text-sm break-all font-medium">{{ stat.value }}</span>
+            </div>
+            <button
+              v-for="ip in ipAddresses" :key="ip.label" type="button"
+              class="group/ip min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2 text-left transition-colors hover:bg-slate-500/10"
+              @click="copyText(ip.value)"
+            >
+              <span class="flex items-center gap-1 text-xs text-muted-foreground">
+                {{ ip.label }}
+                <Icon icon="tabler:copy" :width="12" :height="12" class="opacity-0 transition-opacity group-hover/ip:opacity-70" />
+              </span>
+              <span class="text-xs sm:text-sm break-all font-medium">{{ ip.value }}</span>
+            </button>
           </div>
         </CardX>
       </div>

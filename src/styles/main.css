@@ -150,3 +150,19 @@
     justify-content: center;
   }
 }
+
+/* Theme-toggle circular reveal (View Transitions API).
+   Disable the default cross-fade so the clip-path animation drives the effect. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 0;
+}
+
+::view-transition-new(root) {
+  z-index: 1;
+}

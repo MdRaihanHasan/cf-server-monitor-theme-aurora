@@ -28,6 +28,10 @@ const useAppStore = defineStore('app', () => {
   const lang = ref<Lang>('en-US')
   const publicSettings = ref<PublicSettings>()
   const nodeSelectedGroup = useStorageAsync<string>('nodeSelectedGroup', 'all', localStorage)
+  // Node ordering and status filtering (persisted per device)
+  const nodeSortKey = useStorageAsync<string>('nodeSortKey', 'default', localStorage)
+  const nodeSortDir = useStorageAsync<'asc' | 'desc'>('nodeSortDir', 'asc', localStorage)
+  const nodeStatusFilter = useStorageAsync<'all' | 'online' | 'offline'>('nodeStatusFilter', 'all', localStorage)
   const isLoggedIn = ref<boolean>(false)
   const connectionError = ref<boolean>(false)
 
@@ -250,6 +254,9 @@ const useAppStore = defineStore('app', () => {
     resolvedThemeMode,
     lang,
     nodeSelectedGroup,
+    nodeSortKey,
+    nodeSortDir,
+    nodeStatusFilter,
     nodeViewMode,
     defaultViewMode,
     defaultThemeMode,
